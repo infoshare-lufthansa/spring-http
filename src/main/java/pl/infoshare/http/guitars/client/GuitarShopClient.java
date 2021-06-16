@@ -1,5 +1,7 @@
 package pl.infoshare.http.guitars.client;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -14,8 +16,14 @@ public class GuitarShopClient {
 
     private final RestTemplate restTemplate;
 
-    public GuitarShopClient(RestTemplate restTemplate) {
-        this.restTemplate = restTemplate;
+    public GuitarShopClient(@Value("${guitar.shop.uri}") String guitarShopUri,
+                            @Value("${guitar.shop.username}") String guitarShopUsername,
+                            @Value("${guitar.shop.password}") String guitarShopPassword,
+                            RestTemplateBuilder builder) {
+        this.restTemplate = builder
+                .rootUri(guitarShopUri)
+                .basicAuthentication(guitarShopUsername, guitarShopPassword)
+                .build();
     }
 
     public List<Guitar> getGuitars() {
