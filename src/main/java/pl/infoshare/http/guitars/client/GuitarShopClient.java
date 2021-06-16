@@ -1,5 +1,6 @@
 package pl.infoshare.http.guitars.client;
 
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.cache.annotation.CacheConfig;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 @Component
@@ -30,7 +32,8 @@ public class GuitarShopClient {
                 .build();
     }
 
-    @Cacheable
+//    @Cacheable
+    @CircuitBreaker(name = "guitarsBreaker", fallbackMethod = "fallbackToEmptyGuitars")
     public List<Guitar> getGuitars() {
         System.out.println("getGuitars");
         return Arrays.asList(restTemplate.getForObject("/guitars", Guitar[].class));
@@ -58,4 +61,7 @@ public class GuitarShopClient {
         return httpHeaders;
     }
 
+    private List<Guitar> fallbackToEmptyGuitars(Exception exception) {
+        return Collections.emptyList();
+    }
 }
