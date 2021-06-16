@@ -1,4 +1,4 @@
 GET http://localhost:8080/guitars
 
 ###
-PUT http://localhost:8080/guitars/a191027b-371e-4b7f-9a08-c5f320cff8f8/purchase
+PUT http://localhost:8080/guitars/69af86ec-0918-4325-adcd-a5016d11fcfe/purchase
