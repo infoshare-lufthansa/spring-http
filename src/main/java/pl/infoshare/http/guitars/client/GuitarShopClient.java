@@ -1,5 +1,7 @@
 package pl.infoshare.http.guitars.client;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.cache.annotation.CacheConfig;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -18,8 +20,14 @@ public class GuitarShopClient {
 
     private final RestTemplate restTemplate;
 
-    public GuitarShopClient(RestTemplate restTemplate) {
-        this.restTemplate = restTemplate;
+    public GuitarShopClient(@Value("${guitar.shop.uri}") String guitarShopUri,
+                            @Value("${guitar.shop.username}") String guitarShopUsername,
+                            @Value("${guitar.shop.password}") String guitarShopPassword,
+                            RestTemplateBuilder builder) {
+        this.restTemplate = builder
+                .rootUri(guitarShopUri)
+                .basicAuthentication(guitarShopUsername, guitarShopPassword)
+                .build();
     }
 
     @Cacheable
