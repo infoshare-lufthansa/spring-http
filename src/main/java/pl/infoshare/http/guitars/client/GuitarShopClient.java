@@ -9,9 +9,15 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.reactive.function.BodyInserters;
+import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
+import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
+import reactor.netty.http.client.HttpClient;
 
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -20,15 +26,15 @@ import java.util.List;
 @CacheConfig(cacheNames = "guitars")
 public class GuitarShopClient {
 
-    private final RestTemplate restTemplate;
+    private final WebClient webClient;
 
     public GuitarShopClient(@Value("${guitar.shop.uri}") String guitarShopUri,
                             @Value("${guitar.shop.username}") String guitarShopUsername,
                             @Value("${guitar.shop.password}") String guitarShopPassword,
-                            RestTemplateBuilder builder) {
-        this.restTemplate = builder
-                .rootUri(guitarShopUri)
-                .basicAuthentication(guitarShopUsername, guitarShopPassword)
+                            WebClient.Builder webClientBuilder) {
+        this.webClient = webClientBuilder
+                .baseUrl(guitarShopUri)
+                .defaultHeaders(headers -> headers.setBasicAuth(guitarShopUsername, guitarShopPassword))
                 .build();
     }
 
@@ -36,29 +42,41 @@ public class GuitarShopClient {
     @CircuitBreaker(name = "guitarsBreaker", fallbackMethod = "fallbackToEmptyGuitars")
     public List<Guitar> getGuitars() {
         System.out.println("getGuitars");
-        return Arrays.asList(restTemplate.getForObject("/guitars", Guitar[].class));
+        return webClient.get()
+                .uri("/guitars")
+                .retrieve()
+                .toEntityList(Guitar.class)
+                .block()
+                .getBody();
     }
 
     public Cart createCart() {
-        return restTemplate.postForObject("/carts", null, Cart.class);
+        return webClient.post()
+                .uri("/carts")
+                .retrieve()
+                .toEntity(Cart.class)
+                .block()
+                .getBody();
     }
 
     public void addGuitarToCart(String cartId, AddGuitarRequest addGuitarRequest) {
-        var httpEntity = new HttpEntity<>(addGuitarRequest, prepareHeaders(cartId));
-        restTemplate.exchange("/carts/guitars", HttpMethod.PUT, httpEntity, Void.class);
+        webClient.put()
+                .uri("/carts/guitars")
+                .header("x-cart-id", cartId)
+                .body(BodyInserters.fromValue(addGuitarRequest))
+                .retrieve()
+                .toEntity(Void.class)
+                .block();
     }
 
     @CacheEvict(allEntries = true)
     public void purchaseCart(String cartId) {
-        var httpEntity = new HttpEntity<>(prepareHeaders(cartId));
-        restTemplate.exchange("/carts/checkout", HttpMethod.POST, httpEntity, Void.class);
-    }
-
-    private HttpHeaders prepareHeaders(String cartId) {
-        var httpHeaders = new HttpHeaders();
-        httpHeaders.add("x-cart-id", cartId);
-
-        return httpHeaders;
+        webClient.post()
+                .uri("/carts/checkout")
+                .header("x-cart-id", cartId)
+                .retrieve()
+                .toEntity(Void.class)
+                .block();
     }
 
     private List<Guitar> fallbackToEmptyGuitars(Exception exception) {
