@@ -7,6 +7,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.cache.CacheManager;
+import org.springframework.cache.interceptor.SimpleKey;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -18,6 +20,7 @@ import pl.infoshare.http.guitars.client.Guitar;
 import java.util.List;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 
 @SpringBootTest("guitar.shop.uri=http://localhost:8081")
@@ -28,6 +31,8 @@ class GuitarsControllerTest {
     private ObjectMapper objectMapper;
     @Autowired
     private MockMvc mockMvc;
+    @Autowired
+    private CacheManager cacheManager;
 
     @Test
     void should_buy_guitar() throws Exception {
@@ -75,5 +80,8 @@ class GuitarsControllerTest {
         mockMvc.perform(MockMvcRequestBuilders.put("/guitars/{id}/purchase", guitarId))
                 .andDo(print())
                 .andExpect(MockMvcResultMatchers.status().isOk());
+
+        // then
+        assertThat(cacheManager.getCache("guitars").get(SimpleKey.EMPTY)).isNotNull();
     }
 }
